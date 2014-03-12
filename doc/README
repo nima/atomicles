@@ -1,0 +1,14 @@
+Atomicles
+---------
+
+Atomicles was written with reliability, correctnessm, and portability in mind.
+Hence it does not use some of the more creamy system calls available on Linux,
+but sticks to the old XSI extensions (from the Single UNIX Specifications) from
+the 1970s (AT&T).
+
+This is not really a problem, as none of the system calls in the tools shipped
+in this package ever need to run at a high rate.  Reliability is the goal here.
+
+It will compile on Linux, Apple Mac OS X, and IBM AIX.
+
+ -- Nima Talebi <nima@it.net.au>  Wed, 07 Oct 2009 18:28:13 +1100

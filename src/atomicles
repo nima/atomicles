@@ -1,0 +1,122 @@
+#!/usr/bin/env python2.7
+'''
+#define g_RED    "\033[1;31m"
+#define g_GREEN  "\033[1;32m"
+#define g_YELLOW "\033[1;33m"
+#define g_BLUE   "\033[1;34m"
+#define g_RESET  "\033[0;0m"
+'''
+
+import sys
+from os import environ, path
+from sys import stdout, stderr
+from time import sleep
+
+def getoutput(cmd, STDERR=False):
+    from subprocess import Popen, PIPE
+    p = Popen(cmd, stdout=PIPE, stderr=PIPE, close_fds=True, shell=True)
+    so, se = p.communicate()
+    return STDERR and (so, se) or so.strip()
+
+
+success = 0
+try:
+    from configparser import ConfigParser
+    success = 1
+except ImportError as e:
+    stderr.write("Sorry, %s\n" % e)
+
+ACTIONS = ("start", "stop", "restart", "status")
+
+def which(program):
+    import os
+    def is_exe(fpath):
+        return os.path.exists(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+
+    return None
+
+if success:
+    daemonize = which('daemonize')
+
+    cFM = ConfigParser({
+        'service': 'disabled'
+    })
+    try:
+        cFM.readfp(open(path.join(environ['HOME'], '.daemonizerc')))
+    except IOError as e:
+        success = 0;
+        stderr.write("Sorry, %s\n" % e)
+
+if success:
+    e = 1
+    if len(sys.argv) >= 2 and sys.argv[1] in ACTIONS:
+        services = cFM.sections()
+        manual_eq_enabled = False
+        if len(sys.argv) > 2:
+            services = sys.argv[2:]
+            manual_eq_enabled = True
+
+        for section in services:
+            service = cFM.get(section, 'service')
+            channel = int(cFM.get(section, 'channel'))
+            if sys.argv[1] == "status":
+                sys.stdout.write(
+                    "%-12s %-8s %s\n" % (
+                        section, service, getoutput(
+                            "%s --status %d" % (daemonize, channel)
+                        )
+                    )
+                )
+            elif service == 'enabled' or (service == 'manual' and manual_eq_enabled):
+                command = cFM.get(section, 'command')
+                stdout.write(" * %s@%d:" % (section, channel))
+
+                if sys.argv[1] == "stop":
+                    sys.stdout.write(
+                        "%s\n" % getoutput(
+                            "%s --stop %d" % (daemonize, channel)
+                        )
+                    )
+                elif sys.argv[1] == "start":
+                    sys.stdout.write(
+                        "%s\n" % getoutput(
+                            "%s --start %d -- %s" % (daemonize, channel, command)
+                        )
+                    )
+                elif sys.argv[1] == "restart":
+                    sys.stdout.write(
+                        "%s" % getoutput(
+                            "%s --stop %d" % (daemonize, channel)
+                        )
+                    )
+                    sys.stdout.flush()
+                    sleep(1)
+                    sys.stdout.write(
+                        "%s\n" % getoutput(
+                            "%s --start %d -- %s" % (daemonize, channel, command)
+                        )
+                    )
+            else:
+                stdout.write(" * %-8s @ %3d is Disabled (Manual)\n" % (section, channel))
+    else:
+        sys.stdout.write(
+            "Usage: %s %s\n" % (
+                path.basename(sys.argv[0]),
+                '|'.join(ACTIONS)
+            )
+        )
+
+if not success:
+    exit(1)
+else:
+    exit(0)
