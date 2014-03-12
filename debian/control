@@ -1,0 +1,22 @@
+Source: atomicles
+Section: admin
+Priority: extra
+Maintainer: Nima Talebi <nima@it.net.au>
+Build-Depends: debhelper (>= 7.0.50)
+Standards-Version: 3.8.3
+Homepage: http://projects.autonomy.net.au/atomicles
+
+Package: atomicles
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: atomic power tools for the shell
+ Atomic power tools allows you to create and modify
+ semaphores from the shell, and daemonize any command
+ with a nice control mechanism to control them (i.e.,
+ not having to dig around in the process tree or in
+ /var/run/ for pid files.
+
+Package: atomicles-doc
+Architecture: all
+Description: documentation for atomicles
+ Documentation for Atomicles.
