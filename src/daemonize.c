@@ -1,8 +1,8 @@
 #include "daemonize.h"
 
 #define SFMT (sizeof(key_t) == sizeof(int)) \
-    ? "%3i %c:%-5d %c:%-5d" \
-    : "%3li %c:%-5d %c:%-5d"
+    ? "%8i %c:%-8d %c:%-8d %d" \
+    : "%8li %c:%-8d %c:%-8d %d"
 
 static void handler(int sig, siginfo_t* siginfo, void* ucontext) {
     syslog(LOG_ERR, "Got signal %d at address: 0x%lx\n", sig, (long)siginfo->si_addr);
@@ -150,11 +150,12 @@ int start(int argc, char *argv[], char *envp[], SharedMemory *shmem, key_t key) 
 
     pid_t pid = get_pid(shmem);
     pid_t cpid = get_cpid(shmem);
+    unsigned int count = get_count(shmem);
 
     char buffer[1024];
 
     if(cpid && pid) {
-        daemonstr(buffer, shmem->key, pid, cpid);
+        daemonstr(buffer, shmem->key, pid, cpid, count);
         printf("Daemon%s already running.\n", buffer);
     } else {
         e = 0;
@@ -171,7 +172,7 @@ int start(int argc, char *argv[], char *envp[], SharedMemory *shmem, key_t key) 
             if(pid && cpid) break;
             sleep(1);
         }
-        daemonstr(buffer, shmem->key, pid, cpid);
+        daemonstr(buffer, shmem->key, pid, cpid, count);
         //SharedMemory$delete(&shmem, 0);
 
         printf("Done%s\n", buffer);
@@ -185,9 +186,10 @@ int stop(int argc, char *argv[], char *envp[], SharedMemory *shmem, key_t key) {
 
     pid_t pid = get_pid(shmem);
     pid_t cpid = get_cpid(shmem);
+    unsigned int count = get_count(shmem);
 
     char buffer[1024];
-    daemonstr(buffer, shmem->key, pid, cpid);
+    daemonstr(buffer, shmem->key, pid, cpid, count);
 
     if(pid && cpid) {
         printf("Killing child daemon%s(%d)...\n", buffer, pid);
@@ -211,9 +213,10 @@ int status(int argc, char *argv[], char *envp[], SharedMemory *shmem, key_t key)
 
     pid_t pid = get_pid(shmem);
     pid_t cpid = get_cpid(shmem);
+    unsigned int count = get_count(shmem);
 
     char buffer[1024];
-    daemonstr(buffer, key, pid, cpid);
+    daemonstr(buffer, key, pid, cpid, count);
 
     if(pid && cpid) {
         if(kill(pid, 0))
@@ -229,13 +232,13 @@ int status(int argc, char *argv[], char *envp[], SharedMemory *shmem, key_t key)
     return e;
 }
 
-void daemonstr(char *buffer, key_t key, pid_t pid, pid_t cpid) {
+void daemonstr(char *buffer, key_t key, pid_t pid, pid_t cpid, unsigned int count) {
     char ch_pid = 'P';
     char ch_cpid = 'C';
 
     if(kill(pid, 0)) ch_pid = 'p';
     if(kill(cpid, 0)) ch_cpid = 'c';
-    sprintf(buffer, SFMT, key, ch_pid, pid, ch_cpid, cpid);
+    sprintf(buffer, SFMT, key, ch_pid, pid, ch_cpid, cpid, count);
 }
 
 
@@ -314,7 +317,7 @@ void daemonize(SharedMemory* shmem, int argc, char* argv[], char *envp[]) {
     //. then clearing the sa_flags member and moving the address of the
     //. signal handler into the sa_handler member.
     struct sigaction sa;
-    //void handler(int, siginfo_t*, void*);
+    //. void handler(int, siginfo_t*, void*);
     sa.sa_sigaction = handler;
     sigfillset(&sa.sa_mask);
     sa.sa_flags = SA_SIGINFO|SA_NOCLDWAIT;
@@ -332,7 +335,7 @@ void daemonize(SharedMemory* shmem, int argc, char* argv[], char *envp[]) {
                 timer = 0;
             }
 
-            //. Call the sigaction function to set up the signal handler so that it
+            //! Call the sigaction function to set up the signal handler so that it
             //. is called when the process receives the SIGHUP and other signals.
             if(sigaction(SIGTERM, &sa, NULL)) die(shmem, "sigaction:SIGTERM");
             if(sigaction(SIGUSR1, &sa, NULL)) die(shmem, "sigaction:SIGUSR1");
@@ -345,7 +348,13 @@ void daemonize(SharedMemory* shmem, int argc, char* argv[], char *envp[]) {
             exec_time = time(0);
             pid_t cpid = fork();
             if(cpid==0) /* fork III */ {
-                syslog(LOG_INFO, "Executing subprocess after a %0.0fs sleep...", exp(timer) - 1);
+                inc_count(shmem);
+                syslog(
+                    LOG_INFO,
+                    "Executing subprocess after a %0.0fs sleep; attempt %d...",
+                    exp(timer) - 1,
+                    get_count(shmem)
+                );
                 execvp(argv[0], argv);
                 //. execve should never return, if it does, die...
                 die(shmem, "error");
