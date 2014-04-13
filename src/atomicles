@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python
 '''
 #define g_RED    "\033[1;31m"
 #define g_GREEN  "\033[1;32m"
@@ -70,13 +70,17 @@ if success:
             service = cFM.get(section, 'service')
             channel = int(cFM.get(section, 'channel'))
             if sys.argv[1] == "status":
-                sys.stdout.write(
-                    "%-12s %-8s %s\n" % (
-                        section, service, getoutput(
-                            "%s --status %d" % (daemonize, channel)
-                        )
-                    )
-                )
+                status = getoutput(
+                    "%s --status %d" % (daemonize, channel)
+                ).split()
+                sys.stdout.write("{0:<12s} {1:<8s} {2:<8s} {3:8s} {4:8s} {5:6s} {6}\n".format(
+                    section, service, *status
+                ))
+                #sys.stdout.write(
+                #    "%-12s %-8s %5s %8s %8s %-8s" % (
+                #        section, service, *status
+                #    )
+                #)
             elif service == 'enabled' or (service == 'manual' and manual_eq_enabled):
                 command = cFM.get(section, 'command')
                 stdout.write(" * %s@%d:" % (section, channel))
