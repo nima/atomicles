@@ -192,14 +192,25 @@ int stop(int argc, char *argv[], char *envp[], SharedMemory *shmem, key_t key) {
     daemonstr(buffer, shmem->key, pid, cpid, count);
 
     if(pid && cpid) {
-        printf("Killing child daemon%s(%d)...\n", buffer, pid);
-        if(kill(cpid, SIGUSR1)) perror("kill");
+        printf("Killing child daemon%s(%d)...", buffer, pid);
+        if(kill(cpid, SIGUSR1)) {
+            e = 2;
+            printf("FAIL\n");
+            perror("kill");
+        } else {
+            printf("DONE\n");
 
-        printf("Killing parent daemon%s(%d)...\n", buffer, pid);
-        if(kill(pid, SIGUSR1)) perror("kill");
-
-        cleanup(shmem, "kill");
-        e = 0;
+            printf("Killing parent daemon%s(%d)...", buffer, pid);
+            if(kill(pid, SIGUSR1)) {
+                e = 3;
+                printf("FAIL\n");
+                perror("kill");
+            } else {
+                printf("DONE\n");
+                cleanup(shmem, "kill");
+                e = 0;
+            }
+        }
     } else {
         printf("No daemon%s.\n", buffer);
         e = 1;
