@@ -21,14 +21,23 @@
 Note
 ----
 
-Yes - there are no "Classes" in C, and yes, that means no "Methods" either.
+Obviouslt there are no `classes' in C, and thus no `methods' either.  That
+doesn't mean we can't pretend that there are!
 
-I don't care, I've decided to write this code in an obect oriented style, that
-is, as a real "Class", and so I will refer to it as "Class", and the related
-functions as "Methods".
+Next, let's define a semaphore; a semaphore is like an integer, with 3
+differences:
 
-The alternative was to call them psuedo-Classes and psuedo-Methods, but that
-produces more noise than I cared for.
+    * You can initialize a semaphore to any integer value, just like you can
+      with an integer type.  However unlike an integer, once the semaphore has
+      been initialized, the only mutations allowed as `increment', or
+      `decrement'.  Furthermore, you can not access the current value of a
+      semaphore.
+    * When a thread decrements a semaphore, if the result is negative, the
+      thread blobks itself (sleeps), and cannot continue until another thread
+      increments the semaphore.
+    * When a thread increments a semaphore, if there are other threads waiting,
+      one of the threads will get unblocked (awakended).
+
 
 Note that the semaphore object itself cannot store user-data such as the expiry
 date if one is desired, or the size of a smaphore.
@@ -275,7 +284,8 @@ short Semaphore$lock(Semaphore *this, unsigned short index, unsigned short persi
     if(timeout == LOCK_BLOCKING) {
         //. Block...
         if(semop(this->id, &op, (size_t)1)) {
-            if(errno != EIDRM) { //. EIDRM: The semaphore set is removed from the system.
+            if(errno != EIDRM) {
+                //. EIDRM: The semaphore set is removed from the system.
                 perror("semop:lock");
                 e = -1;
             }
