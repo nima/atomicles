@@ -86,7 +86,10 @@ Semaphore* Semaphore$new(key_t key, unsigned short count, unsigned short size, u
             if(this->id != -1) success = EXIT_SUCCESS;
             else perror("sem:new:semget@reattach");
         } else perror("sem:new:semget@create");
-    } else perror("sem:new:semget@exists");
+    } else {
+        perror("[ERROR:semget()]");
+        fprintf(stderr, "[ERROR:semget()]: Semaphore %u already exists\n", k);
+    }
     /* FIXME - This happens when 2 terminals are started concurrently sometimes...
        Waiting on lock...sem:new:semget@exists: File exists
     */
@@ -216,8 +219,6 @@ int Semaphore$count(Semaphore *this) {
     return this->count;
 }
 
-
-
 int Semaphore$init(Semaphore *this, unsigned short size) {
     /*
     @abstract: Sets the initial values of all semaphore in the semaphore set.
@@ -251,8 +252,8 @@ int Semaphore$extract_count(Semaphore *this) {
     return t_semid_ds.sem_nsems;
 }
 
-
-
+//! Decrement and block if the result if negative
+//! decrement, wait, P, lock
 short Semaphore$lock(Semaphore *this, unsigned short index, unsigned short persist, time_t timeout) {
     /*
     @abstract: Lock 1 unit of this semaphores resource count.
@@ -345,6 +346,8 @@ short Semaphore$lock(Semaphore *this, unsigned short index, unsigned short persi
     return e;
 }
 
+//! Increment and awaken any sleeping processes
+//! increment, signal, V, unlock
 short Semaphore$unlock(Semaphore *this, unsigned short index, unsigned short persist) {
     /*
     @abstract: Unlock 1 unit of resource in indexed semaphore in semaphore set.
