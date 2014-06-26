@@ -1,4 +1,4 @@
-BIN     := daemonize lock
+BIN     := daemonize lock rendezvous barrier
 #BIN     += syschk ia32emu
 CC_OPTS := -DARCH_$(shell uname -m)
 
@@ -10,6 +10,11 @@ lock: lock.c SharedMemory.o Semaphore.o
 daemonize: daemonize.c daemonize.h SharedMemory.o Semaphore.o
 	gcc ${CC_OPTS} -lm -Wall $^ -o $@
 
+rendezvous: rendezvous.c Semaphore.o
+	gcc ${CC_OPTS} -pthread -lm -Wall $^ -o $@
+
+barrier: barrier.c Semaphore.o
+	gcc ${CC_OPTS} -pthread -lm -Wall $^ -o $@
 
 ia32emu: ia32emu.c registers.o bits.o SharedMemory.o Semaphore.o
 	gcc ${CC_OPTS} -lm -g -Wall $^ -o $@
