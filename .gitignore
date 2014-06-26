@@ -1,4 +1,1 @@
 bin
-src/*.o
-src/lock
-src/daemonize
