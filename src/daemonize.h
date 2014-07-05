@@ -25,6 +25,8 @@
 #define DAEMON_START  2 << 2
 #define DAEMON_STATUS 2 << 3
 
+short err_atomicles = 0;
+
 int status(int argc, char *argv[], char *envp[], SharedMemory *shmem, key_t key);
 int stop(int argc, char *argv[], char *envp[], SharedMemory *shmem, key_t key);
 int start(int argc, char *argv[], char *envp[], SharedMemory *shmem, key_t key);

@@ -14,15 +14,18 @@
 #include <getopt.h>
 #endif
 
+#include "common.h"
 #include "Semaphore.h"
-
 #include "SharedMemory.h"
+
+bool g_verbose = false;
+short err_atomicles = 0;
 
 int unlock(unsigned int shsem_key);
 int lock(unsigned int shsem_key, int timeout);
 int status(unsigned int shsem_key);
 int summary(unsigned int shsem_key);
-int create(unsigned int shsem_key, unsigned int semaphores, time_t expires);
+int create(unsigned int shsem_key, unsigned int semaphores, short initial, time_t expires);
 int delete(unsigned int shsem_key);
 void usage(void);
 

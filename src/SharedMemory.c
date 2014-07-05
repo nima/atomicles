@@ -13,7 +13,7 @@
  * imply incrementations of n*sizeof(void) (because n + 1 should point to the
  * next void object).
  */
-SharedMemory* SharedMemory$new(key_t key, size_t size, unsigned short attach) {
+SharedMemory* SharedMemory$new(key_t key, size_t size, bool attach) {
     int success = EXIT_FAILURE;
 
     //. Shared Memory...
@@ -180,7 +180,10 @@ SharedMemory* SharedMemory$attach(key_t key) {
         this->addr = shmat(this->id, NULL, 0);
         if(this->addr != (int *)-1) {
             this->shsem = Semaphore$attach(key + 128);
-        } else perror("shm:attach:shmat");
+        } else {
+            //perror("shm:attach:shmat");
+            err_atomicles |= BIT_SHMEM|BIT_MISSING;
+        }
     } // else perror("shm:attach:shmget");
     return this;
 }
@@ -217,6 +220,27 @@ void SharedMemory$read(SharedMemory* this, unsigned short offset, char *buffer) 
     strncpy(buffer, &(chr_ptr[offset]), this->size - offset);
     e = Semaphore$unlock(this->shsem, 0, 0);
     assert(e == 0);
+}
+
+
+void SharedMemory$write_bool(SharedMemory* this, unsigned short offset, bool n) {
+    short e = Semaphore$lock(this->shsem, 0, 0, 0);
+    assert(e == 0);
+
+    unsigned int *shmem = this->addr;
+    shmem[offset] = n;
+    e = Semaphore$unlock(this->shsem, 0, 0);
+    assert(e == 0);
+}
+bool SharedMemory$read_bool(SharedMemory* this, unsigned short offset) {
+    short e = Semaphore$lock(this->shsem, 0, 0, 0);
+    assert(e == 0);
+
+    unsigned int *shmem = this->addr;
+    e = Semaphore$unlock(this->shsem, 0, 0);
+    assert(e == 0);
+
+    return shmem[offset];
 }
 
 
