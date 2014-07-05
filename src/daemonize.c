@@ -39,6 +39,7 @@ static void die(SharedMemory *shmem, const char *msg) {
 }
 
 int main(int argc, char *argv[], char *envp[]) {
+
     int e = -1;
     SharedMemory *shmem = NULL;
 
