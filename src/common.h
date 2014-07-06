@@ -17,4 +17,16 @@
 
 typedef enum { false = 0, true = 1 } bool;
 
+#ifndef DEBUG
+#define dbg_printf($,...) do {} while(0)
+#else
+#include "dbg.h"
+void dbg_printf(FILE *pipe, const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(pipe, fmt, ap);
+    va_end(ap);
+}
+#endif
+
 #endif

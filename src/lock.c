@@ -5,15 +5,6 @@ static bool expiry;
 
 int init(Semaphore *shsem);
 
-void dbg_printf(FILE *pipe, const char *fmt, ...) {
-    if(!g_verbose) return;
-
-    va_list ap;
-    va_start(ap, fmt);
-    vfprintf(pipe, fmt, ap);
-    va_end(ap);
-}
-
 int main(int argc, char *argv[]) {
     int e = 0;
 
@@ -24,7 +15,7 @@ int main(int argc, char *argv[]) {
         static struct option longopts[] = {
             { "semaphores", required_argument,  NULL,     's' },
             { "timeout",    required_argument,  NULL,     't' },
-            { "verbose",    no_argument,        NULL,     'v' },
+        /*  { "verbose",    no_argument,        NULL,     'v' }, */
             { "expire",     required_argument,  NULL,     'x' },
             { NULL,         0,                  NULL,     0 }
         };
@@ -52,9 +43,6 @@ int main(int argc, char *argv[]) {
                     break;
                 case 't':
                     timeout = atoi(optarg);
-                    break;
-                case 'v':
-                    g_verbose = 1;
                     break;
                 case 'x':
                     expire = atoi(optarg);
@@ -272,7 +260,7 @@ int unlock(unsigned int key) {
 
 void usage() {
     printf("Usage:\n");
-    printf("  lock <key> <action> [-v|--verbose]\n");
+    printf("  lock <key> <action>\n");
     printf("    NOTE: <key> must be in the range 0..127\n");
     printf("\n");
     printf("  lock <key> create [-x|expire] <ttl> [-s|--semaphores <nsems>] <initial>\n");
