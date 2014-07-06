@@ -141,7 +141,7 @@ SharedMemory* SharedMemory$new(key_t key, size_t size, bool attach) {
     return this;
 }
 
-void SharedMemory$delete(SharedMemory **this, short remove_shm_too) {
+void SharedMemory$delete(SharedMemory **this, bool remove_shm_too) {
     if(remove_shm_too) {
         if((*this)->shsem != NULL)
             Semaphore$delete(&((*this)->shsem), 1);

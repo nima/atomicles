@@ -89,19 +89,20 @@ Semaphore* Semaphore$new(key_t key, short size, short initial, bool attach) {
     */
 
     if(success != EXIT_SUCCESS)
-        Semaphore$delete(&this, 0);
+        Semaphore$delete(&this, false);
 
     return this;
 }
 
-void Semaphore$delete(Semaphore **this, short remove_sem_too) {
+void Semaphore$delete(Semaphore **this, bool remove_sem_too) {
     /*
     @abstract: Destructor method.
 
     @discussion: This method takes a second argument.  If this argument is set
     to a non-zero value, other than the semaphore object itself which has
-    been malloced on the heap, the shsem segment in kernel memory will too be
-    removed.  Either way, the malloc will be freed though.
+    been mallocated, the shsem segment in kernel memory will too be removed.
+
+    Either way, the malloc will be freed though.
     */
     if(remove_sem_too)
         if(semctl((*this)->id, NOP, IPC_RMID))

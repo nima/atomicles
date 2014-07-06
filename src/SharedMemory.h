@@ -3,6 +3,8 @@
 
 #include "common.h"
 
+#define SHMKEY(key) ftok(SHMKEYPATH, (key))
+
 #include "Semaphore.h"
 
 #include <unistd.h>     /* Symbolic Constants */
@@ -33,7 +35,7 @@ typedef u_int32_t uint32_t;
 
 SharedMemory* SharedMemory$new(key_t key, size_t size, bool attach);
 SharedMemory* SharedMemory$attach(key_t key);
-void SharedMemory$delete(SharedMemory **this, short remove_shm_too);
+void SharedMemory$delete(SharedMemory **this, bool remove_shm_too);
 
 void SharedMemory$write(SharedMemory *this, unsigned short offset, const char *fmt, ...);
 void SharedMemory$read(SharedMemory *this, unsigned short offset, char *buffer);
