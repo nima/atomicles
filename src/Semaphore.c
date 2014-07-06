@@ -144,6 +144,7 @@ Semaphore *Semaphore$attach(key_t key) {
         //perror("sem:attach:semget");
         err_atomicles |= BIT_SHSEM|BIT_MISSING;
     }
+
     return this;
 }
 
@@ -221,7 +222,7 @@ int Semaphore$init(Semaphore *this, short initial) {
 
 //! Decrement and block if the result if negative
 //! Monikers: decrement, wait, P (proberen (to test)), and lock
-short Semaphore$lock(Semaphore *this, unsigned short index, unsigned short persist, time_t timeout) {
+short Semaphore$lock(Semaphore *this, unsigned short index, bool persist, time_t timeout) {
     /*
     @abstract: Lock 1 unit of this semaphores resource count.
 
@@ -315,7 +316,7 @@ short Semaphore$lock(Semaphore *this, unsigned short index, unsigned short persi
 
 //! Increment and awaken any sleeping processes
 //! Monikers: increment, signal, V (verhogen (to increment)), unlock
-short Semaphore$unlock(Semaphore *this, unsigned short index, unsigned short persist) {
+short Semaphore$unlock(Semaphore *this, unsigned short index, bool persist) {
     /*
     @abstract: Unlock 1 unit of resource in indexed semaphore in semaphore set.
 

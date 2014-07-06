@@ -39,13 +39,13 @@ void Semaphore$delete(Semaphore **this, short remove_sem_too);
 short Semaphore$lock(
     Semaphore *this,
     unsigned short index,
-    unsigned short persist,
+    bool persist,
     time_t timeout
 );
 short Semaphore$unlock(
     Semaphore *this,
     unsigned short index,
-    unsigned short persist //. persist even if last process dies out
+    bool persist //. persist even if last process dies out
 );
 
 int Semaphore_exists(key_t key);
