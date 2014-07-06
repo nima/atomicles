@@ -9,12 +9,6 @@
 #define BIT_MISSING 0x01
 #define BIT_EXISTS  0x02
 
-#define SHMKEYPATH "/dev/zero"
-#define SEMKEYPATH "/dev/null"
-
-#define SHMKEY(key) ftok(SHMKEYPATH, (key))
-#define SEMKEY(key) ftok(SEMKEYPATH, (key))
-
 typedef enum { false = 0, true = 1 } bool;
 
 #include "dbg.h"

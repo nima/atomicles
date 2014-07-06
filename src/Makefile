@@ -1,43 +1,41 @@
-BIN     := daemonize lock
-#BIN     += syschk ia32emu
+BIN     := lock daemonize #syschk ia32emu
 CC_OPTS := -DARCH_$(shell uname -m)
 
-all: $(BIN:%=../bin/%)
+.PHONY: all
+all: $(BIN)
 
-../bin/lock: lock.c SharedMemory.o Semaphore.o
-	gcc ${CC_OPTS} -Wall $^ -o $@
+.PHONY: lock
+lock: ../bin/lock
+../bin/lock: lock.c lock.h SharedMemory.c SharedMemory.h Semaphore.c Semaphore.h
+	gcc ${CC_OPTS} -DSHMKEYPATH='"$(shell realpath $(@F).h)"' -c -Wall SharedMemory.c -o SharedMemory.o
+	gcc ${CC_OPTS} -DSEMKEYPATH='"$(shell realpath $(@F).c)"' -c -Wall Semaphore.c -o Semaphore.o
+	gcc ${CC_OPTS} -lm -Wall $< SharedMemory.o Semaphore.o -o $@
 
-../bin/daemonize: daemonize.c daemonize.h SharedMemory.o Semaphore.o
-	gcc ${CC_OPTS} -lm -Wall $^ -o $@
+.PHONY: daemonize
+daemonize: ../bin/daemonize
+../bin/daemonize: daemonize.c daemonize.h SharedMemory.c SharedMemory.h Semaphore.c Semaphore.h
+	gcc ${CC_OPTS} -DSHMKEYPATH='"$(shell realpath $(@F).h)"' -c -Wall SharedMemory.c -o SharedMemory.o
+	gcc ${CC_OPTS} -DSEMKEYPATH='"$(shell realpath $(@F).c)"' -c -Wall Semaphore.c -o Semaphore.o
+	gcc ${CC_OPTS} -lm -Wall $< SharedMemory.o Semaphore.o -o $@
 
+#../bin/ia32emu: ia32emu.c registers.o bits.o SharedMemory.o Semaphore.o
+#	gcc ${CC_OPTS} -lm -g -Wall $^ -o $@
+#registers.o: registers.c registers.h
+#	gcc ${CC_OPTS} -c -Wall $< -o $@
+#bits.o: bits.c bits.h
+#	gcc ${CC_OPTS} -c -Wall $< -o $@
 
-../bin/ia32emu: ia32emu.c registers.o bits.o SharedMemory.o Semaphore.o
-	gcc ${CC_OPTS} -lm -g -Wall $^ -o $@
-registers.o: registers.c registers.h
-	gcc ${CC_OPTS} -c -Wall $< -o $@
-bits.o: bits.c bits.h
-	gcc ${CC_OPTS} -c -Wall $< -o $@
+#../bin/syschk: syschk.c SharedMemory.o Semaphore.o
+#	gcc ${CC_OPTS} -g -Wall $^ -o $@
 
-../bin/syschk: syschk.c SharedMemory.o Semaphore.o
-	gcc ${CC_OPTS} -g -Wall $^ -o $@
+#../bin/mess: mess.l mess.y
+#	@echo http://ds9a.nl/lex-yacc/cvs/lex-yacc-howto.html
+#	flex $@.l
+#	bison -d $@.y
+#	gcc ${CC_OPTS} lex.yy.c y.tab.c -o $@
 
+.PHONY: purge
+purge: clean; -rm -f $(BIN:%=../bin/%)
 
-
-SharedMemory.o: SharedMemory.c SharedMemory.h Semaphore.o
-	gcc ${CC_OPTS} -c -Wall $< -o $@
-
-Semaphore.o: Semaphore.c Semaphore.h
-	gcc ${CC_OPTS} -c -Wall $< -o $@
-
-
-clean:
-	-rm -f *.o *.s *.py[co]
-	-rm -f $(BIN:%=../bin/%) a.out
-
-../bin/mess: mess.l mess.y
-	@echo http://ds9a.nl/lex-yacc/cvs/lex-yacc-howto.html
-	flex $@.l
-	bison -d $@.y
-	gcc ${CC_OPTS} lex.yy.c y.tab.c -o $@
-
-.PHONY: all clean
+.PHONY: clean
+clean:; -rm -f *.o *.s *.py[co] a.out
