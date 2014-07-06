@@ -3,6 +3,7 @@
 static signed long delta;
 static bool expiry;
 
+int unit(void);
 int init(Semaphore *shsem);
 
 int main(int argc, char *argv[]) {
@@ -15,7 +16,6 @@ int main(int argc, char *argv[]) {
         static struct option longopts[] = {
             { "semaphores", required_argument,  NULL,     's' },
             { "timeout",    required_argument,  NULL,     't' },
-        /*  { "verbose",    no_argument,        NULL,     'v' }, */
             { "expire",     required_argument,  NULL,     'x' },
             { NULL,         0,                  NULL,     0 }
         };
@@ -95,10 +95,13 @@ int main(int argc, char *argv[]) {
             usage();
             e = -2;
         }
+    } else if(argc == 2 && strncmp(argv[1], "unit", 5) == 0) {
+        e = unit();
     } else {
         usage();
         e = 0;
     }
+
     return e;
 }
 
@@ -146,17 +149,15 @@ int create(unsigned int key, unsigned int semaphores, short initial, time_t expi
             SharedMemory$write_uint(shmem, 1, expire?true:false);
             SharedMemory$write_bool(shmem, 2, expire);
             SharedMemory$write_uint(shmem, 3, 0);
+            SharedMemory$delete(&shmem, false);
         } else {
             log_warn("A shmem segment with key %i already exists.\n", key);
         }
 
-        if(shmem != NULL)
-            SharedMemory$delete(&shmem, 0);
+        Semaphore$delete(&shsem, false);
     } else {
         log_warn("A shsem with key %i already exists.\n", key);
     }
-
-    if(shsem != NULL) Semaphore$delete(&shsem, 0);
 
     return err_atomicles;
 }
@@ -252,6 +253,48 @@ int unlock(unsigned int key) {
     } else log_warn("Semaphores %d does not exist.\n", key);
 
     return e;
+}
+
+int unit() {
+    signed int key;
+    unsigned int semaphores;
+    short initial;
+    time_t expire;
+
+    key = 15;
+    semaphores = 1;
+    initial = 0;
+    expire = 0;
+
+    printf("Test 1\n");
+    if(create(key, semaphores, initial, expire) != 0)
+        log_err("create failed");
+    err_atomicles = 0;
+
+    printf("Test 2\n");
+    if(create(key, semaphores, initial, expire) != 10)
+        log_err("recreate didn't fail");
+    err_atomicles = 0;
+
+    printf("Test 3\n");
+    if(delete(key) != 0)
+        log_err("delete failed");
+    err_atomicles = 0;
+
+    if(delete(key) != 9)
+        log_err("redelete didn't fail");
+    err_atomicles = 0;
+
+    /*
+    check(test_check("ex20.c") == 0, "failed with ex20.c");
+    check(test_check(argv[1]) == -1, "failed with argv");
+    check(test_sentinel(1) == 0, "test_sentinel failed.");
+    check(test_sentinel(100) == -1, "test_sentinel failed.");
+    check(test_check_mem() == -1, "test_check_mem failed.");
+    check(test_check_debug() == -1, "test_check_debug failed.");
+    */
+
+    return 0;
 }
 
 void usage() {
