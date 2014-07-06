@@ -108,9 +108,9 @@ int init(Semaphore *shsem) {
     SharedMemory *shmem = SharedMemory$attach(shsem->key);
 
     if(shmem == NULL) {
-        dbg_printf(stderr, "SharedMemory %d does not exist.\n", shsem->key);
+        log_warn("SharedMemory %d does not exist.\n", shsem->key);
     } else if(shmem->shsem == NULL) {
-        dbg_printf(stderr, "SharedMemory %d does have a valid Sempahore.\n", shsem->key);
+        log_warn("SharedMemory %d does have a valid Sempahore.\n", shsem->key);
     } else {
         /* LEGACY TD - should be deleted:
         size_t size = SharedMemory$read_uint(shmem, 0);
@@ -147,13 +147,13 @@ int create(unsigned int key, unsigned int semaphores, short initial, time_t expi
             SharedMemory$write_bool(shmem, 2, expire);
             SharedMemory$write_uint(shmem, 3, 0);
         } else {
-            dbg_printf(stderr, "A shmem segment with key %i already exists.\n", key);
+            log_warn("A shmem segment with key %i already exists.\n", key);
         }
 
         if(shmem != NULL)
             SharedMemory$delete(&shmem, 0);
     } else {
-        dbg_printf(stderr, "A shsem with key %i already exists.\n", key);
+        log_warn("A shsem with key %i already exists.\n", key);
     }
 
     if(shsem != NULL) Semaphore$delete(&shsem, 0);
@@ -167,7 +167,7 @@ int delete(unsigned int key) {
         //. SUCCESS 1 of 2
         Semaphore$delete(&shsem, 1);
     } else {
-        dbg_printf(stderr, "No shsem with key %d.\n", key);
+        log_warn("No shsem with key %d.\n", key);
     }
 
     SharedMemory *shmem = SharedMemory$attach(key);
@@ -175,7 +175,7 @@ int delete(unsigned int key) {
         //. SUCCESS 2 of 2
         SharedMemory$delete(&shmem, 1);
     } else {
-        dbg_printf(stderr, "No shmem with key %d.\n", key);
+        log_warn("No shmem with key %d.\n", key);
     }
 
     return err_atomicles;
@@ -217,11 +217,7 @@ int summary(unsigned int key) {
             printf("Never expires.\n");
         e = 0;
         Semaphore$delete(&shsem, 0);
-    } else dbg_printf(
-        stderr,
-        "No semaphore set in memory with key %u\n",
-        key
-    );
+    } else log_warn("No semaphore set in memory with key %u\n", key);
 
     return e;
 }
@@ -238,10 +234,10 @@ int lock(unsigned int key, int timeout) {
                     e = Semaphore$lock(shsem, SHSEM_INDEX, 1, t);
                 } else delete(key);
             } else e = Semaphore$lock(shsem, SHSEM_INDEX, 1, timeout);
-            if(e == -1) dbg_printf(stderr, "No more semaphores to lock.\n");
+            if(e == -1) log_warn("No more semaphores to lock.\n");
             Semaphore$delete(&shsem, 0);
-        } else dbg_printf(stderr, "Semaphores %d does exist, but could not be attached to.\n", key);
-    } else dbg_printf(stderr, "Semaphores %d does not exist.\n", key);
+        } else log_warn("Semaphores %d does exist, but could not be attached to.\n", key);
+    } else log_warn("Semaphores %d does not exist.\n", key);
     return e;
 }
 
@@ -251,9 +247,9 @@ int unlock(unsigned int key) {
     if(shsem != NULL) {
         init(shsem);
         e = Semaphore$unlock(shsem, SHSEM_INDEX, 1);
-        if(e == -1) dbg_printf(stderr, "No more semaphores to unlock.\n");
+        if(e == -1) log_warn("No more semaphores to unlock.\n");
         Semaphore$delete(&shsem, 0);
-    } else dbg_printf(stderr, "Semaphores %d does not exist.\n", key);
+    } else log_warn("Semaphores %d does not exist.\n", key);
 
     return e;
 }
