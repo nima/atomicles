@@ -220,7 +220,7 @@ int Semaphore$init(Semaphore *this, short initial) {
 }
 
 //! Decrement and block if the result if negative
-//! decrement, wait, P, lock
+//! Monikers: decrement, wait, P (proberen (to test)), and lock
 short Semaphore$lock(Semaphore *this, unsigned short index, unsigned short persist, time_t timeout) {
     /*
     @abstract: Lock 1 unit of this semaphores resource count.
@@ -314,7 +314,7 @@ short Semaphore$lock(Semaphore *this, unsigned short index, unsigned short persi
 }
 
 //! Increment and awaken any sleeping processes
-//! increment, signal, V, unlock
+//! Monikers: increment, signal, V (verhogen (to increment)), unlock
 short Semaphore$unlock(Semaphore *this, unsigned short index, unsigned short persist) {
     /*
     @abstract: Unlock 1 unit of resource in indexed semaphore in semaphore set.
