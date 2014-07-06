@@ -5,17 +5,16 @@
     ? \
         "Id:           %i\n" \
         "Key:          %i\n" \
-        "Resource:     %i of %i semaphores used\n" \
-        "Semaphore:    Semaphore %i of %i\n" \
+        "Semaphore:    Semaphore %i of %i\n"\
+        "Value:        %i\n" \
         "Last Changed: %s" \
     : \
         "Id:           %i\n" \
         "Key:          %li\n" \
-        "Resource:     %i of %i semaphores used\n" \
-        "Semaphore:    Semaphore %i of %i\n" \
+        "Semaphore:    Semaphore %i of %i\n"\
+        "Value:        %i\n" \
         "Last Changed: %s" \
 )
-#include <assert.h>
 
 /*******************************************************************************
 Note
@@ -38,7 +37,6 @@ differences:
     * When a thread increments a semaphore, if there are other threads waiting,
       one of the threads will get unblocked (awakended).
 
-
 Note that the semaphore object itself cannot store user-data such as the expiry
 date if one is desired, or the size of a smaphore.
 *******************************************************************************/
@@ -46,40 +44,36 @@ date if one is desired, or the size of a smaphore.
 #define NOP 0
 
 /* Private Methods */
-int Semaphore$extract_count(Semaphore *this);
-int Semaphore$init(Semaphore *this, unsigned short size);
+int Semaphore$init(Semaphore *this, short initial);
 
 /* Public Methods */
-Semaphore* Semaphore$new(key_t key, unsigned short count, unsigned short size, unsigned short attach) {
+Semaphore* Semaphore$new(key_t key, short size, short initial, bool attach) {
     /*
     @abstract: Create a new Semaphore object
 
-    @discussion: The new object will contain a semaphore set of size `count`,
-    and each on of those will be of size `size'.  If the object with the
-    user-supplied key already exists, then this method will attempt to
-    reattach to that shsem instead of failing - if the user has allowed this.
+    @discussion: The new object will contain a semaphore set of size `size'.
+    If the object of id `key' already exists and if the user has explicitly
+    requested - then this method will attempt to reattach to that shsem instead
+    of failing.
 
     @return: On success, this method returns a pointer to the new object,
     otherwise it will return NULL.
     */
 
     Semaphore *this = (Semaphore *)malloc(sizeof(Semaphore));
-
-    if(this == NULL)
-        return this;
-
-    this->count = count;
-    this->size = size;
+    if(this == NULL) return NULL;
 
     int success = -1;
+    this->size = -1;
     this->key = key;
     key_t k = SEMKEY(key);
     assert(k != -1);
 
-    this->id = semget(k, this->count, 0666|IPC_CREAT|IPC_EXCL);
+    this->id = semget(k, size, 0666|IPC_CREAT|IPC_EXCL);
     if(this->id != -1) { //. New semaphores...
         //. Initialize the semaphores initial values...
-        success = Semaphore$init(this, size);
+        this->size = size;
+        success = Semaphore$init(this, initial);
     } else if(attach) { //. Existing semaphore, attach if user has allowed...
         if(errno == EEXIST) { //. Reattach...
             this->id = semget(k, NOP, 0666|IPC_EXCL);
@@ -87,8 +81,8 @@ Semaphore* Semaphore$new(key_t key, unsigned short count, unsigned short size, u
             else perror("sem:new:semget@reattach");
         } else perror("sem:new:semget@create");
     } else {
-        perror("[ERROR:semget()]");
-        fprintf(stderr, "[ERROR:semget()]: Semaphore %u already exists\n", k);
+        err_atomicles |= BIT_SHSEM|BIT_EXISTS;
+        //perror("[ERROR:semget()]");
     }
     /* FIXME - This happens when 2 terminals are started concurrently sometimes...
        Waiting on lock...sem:new:semget@exists: File exists
@@ -145,28 +139,23 @@ Semaphore *Semaphore$attach(key_t key) {
         this = (Semaphore *)malloc(sizeof(Semaphore));
         this->id = id;
         this->key = key;
+        this->size = Semaphore$size(this);
+    } else {
+        //perror("sem:attach:semget");
+        err_atomicles |= BIT_SHSEM|BIT_MISSING;
+    }
 
-        //. Extract `count' from shsem...
-        this->count = Semaphore$extract_count(this);
-
-        //. Set size to 1 (mutex)...  The user will need to readjust this value
-        //. manually if they're after a counting semaphore instead of this
-        //. default binary semaphore (mutex) via the Semaphore$set_size()
-        //. method.
-        this->size = 1;
-    } else perror("sem:attach:semget");
     return this;
 }
 
-int Semaphore$used(Semaphore *this, unsigned short index) {
+int Semaphore$current(Semaphore *this, unsigned short index) {
     /*
-    @abstract: Returns the number of used semaphores.
+    @abstract: Returns the current value of the semaphore.
 
-    @discussion: Returns the number of used semaphores for the semaphore at the
-    given index in the semaphore set.
+    @discussion: Returns the current value of the semaphore for the semaphore
+    at the given index in the semaphore set.
     */
-    int used = this->size - semctl(this->id, index, GETVAL);
-    return used;
+    return semctl(this->id, index, GETVAL);
 }
 
 time_t Semaphore$ctime(Semaphore *this) {
@@ -177,58 +166,52 @@ time_t Semaphore$ctime(Semaphore *this) {
 
 void Semaphore$desc(Semaphore *this, unsigned short index) {
     /*
-    @abstract: Describe the state of the semaphore and dumpt this to stdout.
+    @abstract: Describe the state of the semaphore and dump to stdout.
     */
     struct semid_ds t_semid_ds;
     semctl(this->id, NOP, IPC_STAT, &t_semid_ds);
 
-    assert(this->count == Semaphore$count(this));
-    int used = Semaphore$used(this, index);
     fprintf(
         stdout, SFMT,
         this->id, this->key,
-        used, this->size,
-        index+1, this->count,
+        index, this->size,
+        Semaphore$current(this, index),
         ctime(&(t_semid_ds.sem_ctime))
     );
 }
 
-
 int Semaphore$size(Semaphore *this) {
     /*
-    @abstract: Simple accessor method, returns the semaphore size.
+    @abstract: Simple accessor method, returns the semaphore set size.
 
-    @discussion: A size of 1 indicates that this is a binary semaphore, otherwise
-    known as a mutex.  A size greater than 1 indicates that this is in fact a
-    counting semaphore.
+    @discussion:  Where the user has reattached to an existing semaphore
+    object, this method is required to figure out what the set-size of the
+    semaphore-set was at the time of its creation (via the Semaphore$new()
+    method).
+
+    A size of 1 indicates that this is a binary semaphore, otherwise known as a
+    mutex.  A size greater than 1 declares this a counting semaphore.
     */
+    if(this->size == -1) {
+        assert(this->id != -1);
+        struct semid_ds t_semid_ds;
+        semctl(this->id, NOP, IPC_STAT, &t_semid_ds);
+        this->size = t_semid_ds.sem_nsems;
+    }
+
     return this->size;
 }
 
-void Semaphore$set_size(Semaphore *this, unsigned short size) {
-    /*
-    @abstract: Set the size (limit) of all semaphores in the semaphore set.
-    */
-    this->size = size;
-}
-
-int Semaphore$count(Semaphore *this) {
-    /*
-    @abstract: Simple accessor method, returns the semaphore set size.
-    */
-    return this->count;
-}
-
-int Semaphore$init(Semaphore *this, unsigned short size) {
+int Semaphore$init(Semaphore *this, short initial) {
     /*
     @abstract: Sets the initial values of all semaphore in the semaphore set.
     */
     int success = EXIT_FAILURE;
 
-    short sarray[this->count];
+    short sarray[this->size];
     int i;
-    for(i=0; i<this->count; i++)
-        sarray[i] = size;
+    for(i=0; i<this->size; i++)
+        sarray[i] = initial;
 
     if(semctl(this->id, NOP, SETALL, sarray))
         perror("semctl:new");
@@ -237,24 +220,9 @@ int Semaphore$init(Semaphore *this, unsigned short size) {
     return success;
 }
 
-int Semaphore$extract_count(Semaphore *this) {
-    /*
-    @abstract: Extract the size of the semaphore set
-
-    @discussion:  Where the user has reattached to an existing semaphore
-    object, this method is required to figure out what the set-size of the
-    semaphore-set was at the time of its creation (via the Semaphore$new()
-    method).
-    */
-    assert(this->id != -1);
-    struct semid_ds t_semid_ds;
-    semctl(this->id, NOP, IPC_STAT, &t_semid_ds);
-    return t_semid_ds.sem_nsems;
-}
-
 //! Decrement and block if the result if negative
-//! decrement, wait, P, lock
-short Semaphore$lock(Semaphore *this, unsigned short index, unsigned short persist, time_t timeout) {
+//! Monikers: decrement, wait, P (proberen (to test)), and lock
+short Semaphore$lock(Semaphore *this, unsigned short index, bool persist, time_t timeout) {
     /*
     @abstract: Lock 1 unit of this semaphores resource count.
 
@@ -347,8 +315,8 @@ short Semaphore$lock(Semaphore *this, unsigned short index, unsigned short persi
 }
 
 //! Increment and awaken any sleeping processes
-//! increment, signal, V, unlock
-short Semaphore$unlock(Semaphore *this, unsigned short index, unsigned short persist) {
+//! Monikers: increment, signal, V (verhogen (to increment)), unlock
+short Semaphore$unlock(Semaphore *this, unsigned short index, bool persist) {
     /*
     @abstract: Unlock 1 unit of resource in indexed semaphore in semaphore set.
 
@@ -366,17 +334,14 @@ short Semaphore$unlock(Semaphore *this, unsigned short index, unsigned short per
 
     int e = -1;
 
-    if(Semaphore$used(this, index) > 0) {
-        struct sembuf op;
-        op.sem_num = index;
-        op.sem_op = +1;
-        op.sem_flg = persist?0:SEM_UNDO;
-        if(semop(this->id, &op, (size_t)1)) {
-            perror("semop:unlock");
-        } else {
-            e = 0;
-        }
-    }
+    struct sembuf op;
+    op.sem_num = index;
+    op.sem_op = +1;
+    op.sem_flg = persist?0:SEM_UNDO;
+    if(semop(this->id, &op, (size_t)1))
+        perror("semop:unlock");
+    else
+        e = 0;
 
     return e;
 }
