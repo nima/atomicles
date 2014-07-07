@@ -10,8 +10,8 @@ purge clean:
 	@$(MAKE) -C src $@
 
 install: build $(INSTALL:%=/opt/bin/%)
-/opt/bin/%: src/%
-	ln -s $(PWD)/$< $@
+/opt/bin/%: bin/%
+	ln -sf $(PWD)/$< $@
 
 uninstall:
 	@rm -f $(INSTALL:%=/opt/bin/%)
