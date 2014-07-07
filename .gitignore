@@ -1,3 +1,5 @@
 src/*.o
 bin/lock
 bin/daemonize
+bin/barrier
+bin/rendezvous
