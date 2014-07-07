@@ -1,4 +1,3 @@
-bin
 src/*.o
-src/lock
-src/daemonize
+bin/lock
+bin/daemonize

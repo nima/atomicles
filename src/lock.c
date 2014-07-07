@@ -3,16 +3,8 @@
 static signed long delta;
 static bool expiry;
 
+int unit(void);
 int init(Semaphore *shsem);
-
-void dbg_printf(FILE *pipe, const char *fmt, ...) {
-    if(!g_verbose) return;
-
-    va_list ap;
-    va_start(ap, fmt);
-    vfprintf(pipe, fmt, ap);
-    va_end(ap);
-}
 
 int main(int argc, char *argv[]) {
     int e = 0;
@@ -24,7 +16,6 @@ int main(int argc, char *argv[]) {
         static struct option longopts[] = {
             { "semaphores", required_argument,  NULL,     's' },
             { "timeout",    required_argument,  NULL,     't' },
-            { "verbose",    no_argument,        NULL,     'v' },
             { "expire",     required_argument,  NULL,     'x' },
             { NULL,         0,                  NULL,     0 }
         };
@@ -52,9 +43,6 @@ int main(int argc, char *argv[]) {
                     break;
                 case 't':
                     timeout = atoi(optarg);
-                    break;
-                case 'v':
-                    g_verbose = 1;
                     break;
                 case 'x':
                     expire = atoi(optarg);
@@ -107,10 +95,13 @@ int main(int argc, char *argv[]) {
             usage();
             e = -2;
         }
+    } else if(argc == 2 && strncmp(argv[1], "unit", 5) == 0) {
+        e = unit();
     } else {
         usage();
         e = 0;
     }
+
     return e;
 }
 
@@ -120,9 +111,9 @@ int init(Semaphore *shsem) {
     SharedMemory *shmem = SharedMemory$attach(shsem->key);
 
     if(shmem == NULL) {
-        dbg_printf(stderr, "SharedMemory %d does not exist.\n", shsem->key);
+        log_warn("SharedMemory %d does not exist.\n", shsem->key);
     } else if(shmem->shsem == NULL) {
-        dbg_printf(stderr, "SharedMemory %d does have a valid Sempahore.\n", shsem->key);
+        log_warn("SharedMemory %d does have a valid Sempahore.\n", shsem->key);
     } else {
         /* LEGACY TD - should be deleted:
         size_t size = SharedMemory$read_uint(shmem, 0);
@@ -158,17 +149,15 @@ int create(unsigned int key, unsigned int semaphores, short initial, time_t expi
             SharedMemory$write_uint(shmem, 1, expire?true:false);
             SharedMemory$write_bool(shmem, 2, expire);
             SharedMemory$write_uint(shmem, 3, 0);
+            SharedMemory$delete(&shmem, false);
         } else {
-            dbg_printf(stderr, "A shmem segment with key %i already exists.\n", key);
+            log_warn("A shmem segment with key %i already exists.\n", key);
         }
 
-        if(shmem != NULL)
-            SharedMemory$delete(&shmem, 0);
+        Semaphore$delete(&shsem, false);
     } else {
-        dbg_printf(stderr, "A shsem with key %i already exists.\n", key);
+        log_warn("A shsem with key %i already exists.\n", key);
     }
-
-    if(shsem != NULL) Semaphore$delete(&shsem, 0);
 
     return err_atomicles;
 }
@@ -179,7 +168,7 @@ int delete(unsigned int key) {
         //. SUCCESS 1 of 2
         Semaphore$delete(&shsem, 1);
     } else {
-        dbg_printf(stderr, "No shsem with key %d.\n", key);
+        log_warn("No shsem with key %d.\n", key);
     }
 
     SharedMemory *shmem = SharedMemory$attach(key);
@@ -187,7 +176,7 @@ int delete(unsigned int key) {
         //. SUCCESS 2 of 2
         SharedMemory$delete(&shmem, 1);
     } else {
-        dbg_printf(stderr, "No shmem with key %d.\n", key);
+        log_warn("No shmem with key %d.\n", key);
     }
 
     return err_atomicles;
@@ -229,11 +218,7 @@ int summary(unsigned int key) {
             printf("Never expires.\n");
         e = 0;
         Semaphore$delete(&shsem, 0);
-    } else dbg_printf(
-        stderr,
-        "No semaphore set in memory with key %u\n",
-        key
-    );
+    } else log_warn("No semaphore set in memory with key %u\n", key);
 
     return e;
 }
@@ -250,10 +235,10 @@ int lock(unsigned int key, int timeout) {
                     e = Semaphore$lock(shsem, SHSEM_INDEX, 1, t);
                 } else delete(key);
             } else e = Semaphore$lock(shsem, SHSEM_INDEX, 1, timeout);
-            if(e == -1) dbg_printf(stderr, "No more semaphores to lock.\n");
+            if(e == -1) log_warn("No more semaphores to lock.\n");
             Semaphore$delete(&shsem, 0);
-        } else dbg_printf(stderr, "Semaphores %d does exist, but could not be attached to.\n", key);
-    } else dbg_printf(stderr, "Semaphores %d does not exist.\n", key);
+        } else log_warn("Semaphores %d does exist, but could not be attached to.\n", key);
+    } else log_warn("Semaphores %d does not exist.\n", key);
     return e;
 }
 
@@ -263,16 +248,58 @@ int unlock(unsigned int key) {
     if(shsem != NULL) {
         init(shsem);
         e = Semaphore$unlock(shsem, SHSEM_INDEX, 1);
-        if(e == -1) dbg_printf(stderr, "No more semaphores to unlock.\n");
+        if(e == -1) log_warn("No more semaphores to unlock.\n");
         Semaphore$delete(&shsem, 0);
-    } else dbg_printf(stderr, "Semaphores %d does not exist.\n", key);
+    } else log_warn("Semaphores %d does not exist.\n", key);
 
     return e;
 }
 
+int unit() {
+    signed int key;
+    unsigned int semaphores;
+    short initial;
+    time_t expire;
+
+    key = 15;
+    semaphores = 1;
+    initial = 0;
+    expire = 0;
+
+    printf("Test 1\n");
+    if(create(key, semaphores, initial, expire) != 0)
+        log_err("create failed");
+    err_atomicles = 0;
+
+    printf("Test 2\n");
+    if(create(key, semaphores, initial, expire) != 10)
+        log_err("recreate didn't fail");
+    err_atomicles = 0;
+
+    printf("Test 3\n");
+    if(delete(key) != 0)
+        log_err("delete failed");
+    err_atomicles = 0;
+
+    if(delete(key) != 9)
+        log_err("redelete didn't fail");
+    err_atomicles = 0;
+
+    /*
+    check(test_check("ex20.c") == 0, "failed with ex20.c");
+    check(test_check(argv[1]) == -1, "failed with argv");
+    check(test_sentinel(1) == 0, "test_sentinel failed.");
+    check(test_sentinel(100) == -1, "test_sentinel failed.");
+    check(test_check_mem() == -1, "test_check_mem failed.");
+    check(test_check_debug() == -1, "test_check_debug failed.");
+    */
+
+    return 0;
+}
+
 void usage() {
     printf("Usage:\n");
-    printf("  lock <key> <action> [-v|--verbose]\n");
+    printf("  lock <key> <action>\n");
     printf("    NOTE: <key> must be in the range 0..127\n");
     printf("\n");
     printf("  lock <key> create [-x|expire] <ttl> [-s|--semaphores <nsems>] <initial>\n");

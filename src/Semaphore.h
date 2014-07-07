@@ -3,6 +3,8 @@
 
 #include "common.h"
 
+#define SEMKEY(key) ftok(SEMKEYPATH, (key))
+
 #include <time.h>       /* ctime */
 #include <unistd.h>     /* sleep */
 #include <errno.h>      /* perror */
@@ -34,7 +36,7 @@ Semaphore* Semaphore$new(
     bool attach
 );
 Semaphore *Semaphore$attach(key_t key);
-void Semaphore$delete(Semaphore **this, short remove_sem_too);
+void Semaphore$delete(Semaphore **this, bool remove_sem_too);
 
 short Semaphore$lock(
     Semaphore *this,
