@@ -182,7 +182,7 @@ SharedMemory* SharedMemory$attach(key_t key) {
             this->shsem = Semaphore$attach(key + 128);
         } else {
             //perror("shm:attach:shmat");
-            err_atomicles |= BIT_SHMEM|BIT_MISSING;
+            err_atomicles |= FLAG_SHMEM|FLAG_MISSING;
         }
     } // else perror("shm:attach:shmget");
     return this;

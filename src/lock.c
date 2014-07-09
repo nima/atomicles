@@ -106,14 +106,14 @@ int main(int argc, char *argv[]) {
 }
 
 int init(Semaphore *shsem) {
-    int e = -1;
+    err_atomicles = 0;
 
     SharedMemory *shmem = SharedMemory$attach(shsem->key);
 
     if(shmem == NULL) {
-        log_warn("SharedMemory %d does not exist.\n", shsem->key);
+        log_warn("SharedMemory %d does not exist", shsem->key);
     } else if(shmem->shsem == NULL) {
-        log_warn("SharedMemory %d does have a valid Sempahore.\n", shsem->key);
+        log_warn("SharedMemory %d does have a valid Sempahore", shsem->key);
     } else {
         /* LEGACY TD - should be deleted:
         size_t size = SharedMemory$read_uint(shmem, 0);
@@ -127,14 +127,15 @@ int init(Semaphore *shsem) {
             delta = expire - now;
         }
 
-        SharedMemory$delete(&shmem, 0);
-        e = 0;
+        SharedMemory$delete(&shmem, false);
     }
 
-    return e;
+    return err_atomicles;
 }
 
 int create(unsigned int key, unsigned int semaphores, short initial, time_t expire) {
+    err_atomicles = 0;
+
     Semaphore *shsem = Semaphore$new(key, SHSEM_COUNT, initial, false);
     if(shsem != NULL) {
         SharedMemory *shmem = SharedMemory$new(
@@ -151,24 +152,26 @@ int create(unsigned int key, unsigned int semaphores, short initial, time_t expi
             SharedMemory$write_uint(shmem, 3, 0);
             SharedMemory$delete(&shmem, false);
         } else {
-            log_warn("A shmem segment with key %i already exists.\n", key);
+            log_warn("A shmem segment with key %i already exists", key);
         }
 
         Semaphore$delete(&shsem, false);
     } else {
-        log_warn("A shsem with key %i already exists.\n", key);
+        log_warn("A shsem with key %i already exists", key);
     }
 
     return err_atomicles;
 }
 
 int delete(unsigned int key) {
+    err_atomicles = 0;
+
     Semaphore *shsem = Semaphore$attach(key);
     if(shsem != NULL) {
         //. SUCCESS 1 of 2
         Semaphore$delete(&shsem, 1);
     } else {
-        log_warn("No shsem with key %d.\n", key);
+        log_warn("No shsem with key %d", key);
     }
 
     SharedMemory *shmem = SharedMemory$attach(key);
@@ -176,35 +179,35 @@ int delete(unsigned int key) {
         //. SUCCESS 2 of 2
         SharedMemory$delete(&shmem, 1);
     } else {
-        log_warn("No shmem with key %d.\n", key);
+        log_warn("No shmem with key %d", key);
     }
 
     return err_atomicles;
 }
 
 int status(unsigned int key) {
-    int e = -1;
+    err_atomicles = 0;
+
     int d = -1;
     int u = -1;
     Semaphore *shsem = Semaphore$attach(key);
     if(shsem != NULL) {
         init(shsem);
-        if(expiry) {
-            if(delta > 0) {
-                d = delta;
-                e = 0;
-            }
-        } else e = 0;
-
-        if(e == 0)
+        if(expiry && delta > 0) {
+            d = delta;
             u = Semaphore$current(shsem, SHSEM_INDEX);
+        } else if(!expiry) {
+            u = Semaphore$current(shsem, SHSEM_INDEX);
+        }
     }
     printf("%d %d\n", u, d);
-    return e;
+
+    return err_atomicles;
 }
 
 int summary(unsigned int key) {
-    int e = -1;
+    err_atomicles = 0;
+
     Semaphore *shsem = Semaphore$attach(key);
     if(shsem != NULL) {
         init(shsem);
@@ -213,18 +216,18 @@ int summary(unsigned int key) {
             if(delta > 0)
                 printf("Expires In:   %lis\n", delta);
             else
-                printf("Semaphore has expired.\n");
+                printf("Semaphore has expired\n");
         } else
-            printf("Never expires.\n");
-        e = 0;
-        Semaphore$delete(&shsem, 0);
+            printf("Never expires\n");
+        Semaphore$delete(&shsem, false);
     } else log_warn("No semaphore set in memory with key %u\n", key);
 
-    return e;
+    return err_atomicles;
 }
 
 int lock(unsigned int key, int timeout) {
-    int e = -1;
+    err_atomicles = 0;
+
     if(Semaphore_exists(key)) {
         Semaphore *shsem = Semaphore$attach(key);
         if(shsem != NULL) {
@@ -232,27 +235,27 @@ int lock(unsigned int key, int timeout) {
             if(expiry) {
                 if(delta > 0) {
                     int t = timeout==0 ? delta : min(delta, timeout);
-                    e = Semaphore$lock(shsem, SHSEM_INDEX, 1, t);
+                    Semaphore$lock(shsem, SHSEM_INDEX, 1, t);
                 } else delete(key);
-            } else e = Semaphore$lock(shsem, SHSEM_INDEX, 1, timeout);
-            if(e == -1) log_warn("No more semaphores to lock.\n");
-            Semaphore$delete(&shsem, 0);
-        } else log_warn("Semaphores %d does exist, but could not be attached to.\n", key);
-    } else log_warn("Semaphores %d does not exist.\n", key);
-    return e;
+            } else Semaphore$lock(shsem, SHSEM_INDEX, 1, timeout);
+            Semaphore$delete(&shsem, false);
+        } else log_warn("Semaphores %d does exist, but could not be attached to", key);
+    } else log_warn("Semaphores %d does not exist", key);
+
+    return err_atomicles;
 }
 
 int unlock(unsigned int key) {
-    int e = -1;
+    err_atomicles = 0;
+
     Semaphore *shsem = Semaphore$attach(key);
     if(shsem != NULL) {
         init(shsem);
-        e = Semaphore$unlock(shsem, SHSEM_INDEX, 1);
-        if(e == -1) log_warn("No more semaphores to unlock.\n");
-        Semaphore$delete(&shsem, 0);
-    } else log_warn("Semaphores %d does not exist.\n", key);
+        Semaphore$unlock(shsem, SHSEM_INDEX, 1);
+        Semaphore$delete(&shsem, false);
+    } else log_warn("Semaphores %d does not exist", key);
 
-    return e;
+    return err_atomicles;
 }
 
 int unit() {
@@ -266,33 +269,43 @@ int unit() {
     initial = 0;
     expire = 0;
 
-    printf("Test 1\n");
-    if(create(key, semaphores, initial, expire) != 0)
-        log_err("create failed");
-    err_atomicles = 0;
+    log_info("Test create"); {
+        if(create(key, semaphores, initial, expire) != 0)
+            log_errr("create failed");
+    }
 
-    printf("Test 2\n");
-    if(create(key, semaphores, initial, expire) != 10)
-        log_err("recreate didn't fail");
-    err_atomicles = 0;
+    log_info("Test recreate"); {
+        if(create(key, semaphores, initial, expire) != (FLAG_SHSEM|FLAG_EXISTS))
+            log_errr("recreate didn't fail");
+    }
 
-    printf("Test 3\n");
-    if(delete(key) != 0)
-        log_err("delete failed");
-    err_atomicles = 0;
+    log_info("Test lock timeout"); {
+        if(lock(key, 3) != (FLAG_SHSEM|FLAG_TIMEOUT))
+            log_errr(
+                "lock timeout code %d did not match expected %d",
+                err_atomicles,
+                FLAG_SHSEM|FLAG_TIMEOUT
+            );
+    }
 
-    if(delete(key) != 9)
-        log_err("redelete didn't fail");
-    err_atomicles = 0;
+    log_info("Test lock non-block/unavail"); {
+        if(lock(key, LOCK_NONBLOCK) != (FLAG_SHSEM|FLAG_UNAVAIL))
+            log_errr(
+                "lock nonblock code %d did not match expected %d",
+                err_atomicles,
+                FLAG_SHSEM|FLAG_UNAVAIL
+            );
+    }
 
-    /*
-    check(test_check("ex20.c") == 0, "failed with ex20.c");
-    check(test_check(argv[1]) == -1, "failed with argv");
-    check(test_sentinel(1) == 0, "test_sentinel failed.");
-    check(test_sentinel(100) == -1, "test_sentinel failed.");
-    check(test_check_mem() == -1, "test_check_mem failed.");
-    check(test_check_debug() == -1, "test_check_debug failed.");
-    */
+    log_info("Test delete"); {
+        if(delete(key) != 0)
+            log_errr("delete failed");
+    }
+
+    log_info("Test redelete"); {
+        if(delete(key) != (FLAG_SHSEM|FLAG_MISSING))
+            log_errr("redelete didn't fail");
+    }
 
     return 0;
 }

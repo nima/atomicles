@@ -38,13 +38,13 @@ Semaphore* Semaphore$new(
 Semaphore *Semaphore$attach(key_t key);
 void Semaphore$delete(Semaphore **this, bool remove_sem_too);
 
-short Semaphore$lock(
+int Semaphore$lock(
     Semaphore *this,
     unsigned short index,
     bool persist,
     time_t timeout
 );
-short Semaphore$unlock(
+int Semaphore$unlock(
     Semaphore *this,
     unsigned short index,
     bool persist //. persist even if last process dies out

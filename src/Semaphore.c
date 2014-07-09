@@ -81,7 +81,7 @@ Semaphore* Semaphore$new(key_t key, short size, short initial, bool attach) {
             else perror("sem:new:semget@reattach");
         } else perror("sem:new:semget@create");
     } else {
-        err_atomicles |= BIT_SHSEM|BIT_EXISTS;
+        err_atomicles |= FLAG_SHSEM|FLAG_EXISTS;
         //perror("[ERROR:semget()]");
     }
     /* FIXME - This happens when 2 terminals are started concurrently sometimes...
@@ -143,7 +143,7 @@ Semaphore *Semaphore$attach(key_t key) {
         this->size = Semaphore$size(this);
     } else {
         //perror("sem:attach:semget");
-        err_atomicles |= BIT_SHSEM|BIT_MISSING;
+        err_atomicles |= FLAG_SHSEM|FLAG_MISSING;
     }
 
     return this;
@@ -223,7 +223,7 @@ int Semaphore$init(Semaphore *this, short initial) {
 
 //! Decrement and block if the result if negative
 //! Monikers: decrement, wait, P (proberen (to test)), and lock
-short Semaphore$lock(Semaphore *this, unsigned short index, bool persist, time_t timeout) {
+int Semaphore$lock(Semaphore *this, unsigned short index, bool persist, time_t timeout) {
     /*
     @abstract: Lock 1 unit of this semaphores resource count.
 
@@ -244,8 +244,6 @@ short Semaphore$lock(Semaphore *this, unsigned short index, bool persist, time_t
     normal use.
     */
 
-    short e = 0;
-
     struct sembuf op;
     op.sem_num = index;
     op.sem_op = -1;
@@ -257,7 +255,7 @@ short Semaphore$lock(Semaphore *this, unsigned short index, bool persist, time_t
             if(errno != EIDRM) {
                 //. EIDRM: The semaphore set is removed from the system.
                 perror("semop:lock");
-                e = -1;
+                err_atomicles |= FLAG_SHSEM|FLAG_UNKNOWN;
             }
         }
     } else if(timeout == LOCK_NONBLOCK) {
@@ -266,34 +264,35 @@ short Semaphore$lock(Semaphore *this, unsigned short index, bool persist, time_t
         if(semop(this->id, &op, (size_t)1)) {
             if(errno == EAGAIN) {
                 //. Timed out, still can't lock...
-                e = 1;
+                err_atomicles |= FLAG_SHSEM|FLAG_UNAVAIL;
             } else if(errno != EIDRM) {
                 //. EIDRM: The semaphore set is removed from the system.
                 perror("semop:lock");
-                e = -1;
+                err_atomicles |= FLAG_SHSEM|FLAG_UNKNOWN;
             }
         }
     } else {
         //. Blocking for at most `timeout' seconds...
 
-#ifdef Linux
+#ifdef _GNU_SOURCE
         struct timespec t;
         t.tv_sec = timeout;
         t.tv_nsec = 0;
-        if(semtimedop(this->id, &op, (size_t)1), t) {
+        if(semtimedop(this->id, &op, (size_t)1, &t)) {
             if(errno == EAGAIN) {
                 //. Timed out, still can't lock...
-                e = 1;
+                err_atomicles |= FLAG_SHSEM|FLAG_TIMEOUT;
+                dbg_warn("timed out");
             } else if(errno != EIDRM) {
                 //. EIDRM: The semaphore set is removed from the system.
-                perror("semtimedop:lock");
-                e = -1;
+                log_warn("semtimedop:lock");
+                err_atomicles |= FLAG_SHSEM|FLAG_UNKNOWN;
             }
         }
 #else
         time_t t;
         op.sem_flg |= IPC_NOWAIT;
-        e = 1;
+        err_atomicles |= FLAG_SHSEM|FLAG_UNKNOWN;
         for(t=0; t<timeout; t++) {
             if(semop(this->id, &op, (size_t)1)) {
                 if(errno == EAGAIN) {
@@ -302,22 +301,24 @@ short Semaphore$lock(Semaphore *this, unsigned short index, bool persist, time_t
                 } else if(errno != EIDRM) {
                     //. EIDRM: The semaphore set is removed from the system.
                     perror("semop:lock");
-                    e = -1;
+                    err_atomicles |= FLAG_SHSEM|FLAG_UNKNOWN;
                     break;
                 }
             } else {
-                e = 0;
+                //. Success
                 break;
+                err_atomicles = 0;
             }
         }
 #endif
     }
-    return e;
+
+    return err_atomicles;
 }
 
 //! Increment and awaken any sleeping processes
 //! Monikers: increment, signal, V (verhogen (to increment)), unlock
-short Semaphore$unlock(Semaphore *this, unsigned short index, bool persist) {
+int Semaphore$unlock(Semaphore *this, unsigned short index, bool persist) {
     /*
     @abstract: Unlock 1 unit of resource in indexed semaphore in semaphore set.
 

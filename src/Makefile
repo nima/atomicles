@@ -1,7 +1,7 @@
 BIN     := lock daemonize #syschk ia32emu
 EX      := rendezvous barrier
 
-CC_OPTS := -DARCH_$(shell uname -m) -pthread -lm
+CC_OPTS := -DARCH_$(shell uname -m) -pthread -lm -DDEBUG=4
 
 .PHONY: all $(BIN) $(EX)
 all: $(BIN) $(EX)
