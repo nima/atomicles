@@ -188,19 +188,18 @@ int delete(unsigned int key) {
 int status(unsigned int key) {
     err_atomicles = 0;
 
-    int d = -1;
-    int u = -1;
     Semaphore *shsem = Semaphore$attach(key);
     if(shsem != NULL) {
         init(shsem);
+        int u;
         if(expiry && delta > 0) {
-            d = delta;
             u = Semaphore$current(shsem, SHSEM_INDEX);
+            printf("%d %li\n", u, delta);
         } else if(!expiry) {
             u = Semaphore$current(shsem, SHSEM_INDEX);
+            printf("%d -\n", u);
         }
     }
-    printf("%d %d\n", u, d);
 
     return err_atomicles;
 }
