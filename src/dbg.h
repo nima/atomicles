@@ -60,26 +60,26 @@
 
 #define clean_errno() (errno == 0 ? "None" : strerror(errno))
 
-#define log_dbug(M, ...) fprintf(stderr,\
+#define log_dbug(M, ...) errno = fprintf(stderr,\
     ANSI_COLOR_MAGENTA "[DBUG] (%s:%d; %s)"\
     ANSI_COLOR_RESET   " - " M "\n",\
     __FILE__, __LINE__, clean_errno(), ##__VA_ARGS__\
-); errno=0
-#define log_errr(M, ...) fprintf(stderr,\
+) ? 0 : 0
+#define log_errr(M, ...) errno = fprintf(stderr,\
     ANSI_COLOR_RED     "[ERRR] (%s:%d; %s)"\
     ANSI_COLOR_RESET   " - " M "\n",\
     __FILE__, __LINE__, clean_errno(), ##__VA_ARGS__\
-); errno=0
-#define log_warn(M, ...) fprintf(stderr,\
+) ? 0 : 0
+#define log_warn(M, ...) errno = fprintf(stderr,\
     ANSI_COLOR_YELLOW  "[WARN] (%s:%d; %s)"\
     ANSI_COLOR_RESET   " - " M "\n",\
     __FILE__, __LINE__, clean_errno(), ##__VA_ARGS__\
-); errno=0
-#define log_info(M, ...) fprintf(stderr,\
+) ? 0 : 0
+#define log_info(M, ...) errno = fprintf(stderr,\
     ANSI_COLOR_BLUE    "[INFO] (%s:%d; %s)"\
     ANSI_COLOR_RESET   " - " M "\n",\
     __FILE__, __LINE__, clean_errno(), ##__VA_ARGS__\
-); errno=0
+) ? 0 : 0
 
 #define check(A, M, ...) if(!(A)) { log_err(M, ##__VA_ARGS__); errno=0; goto error; }
 

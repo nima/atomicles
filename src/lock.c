@@ -306,7 +306,7 @@ int unit() {
     }
 
     log_info("Test lock timeout"); {
-        if(lock(key, 3) != (FLAG_SHSEM|FLAG_TIMEOUT))
+        if(lock(key, 1) != (FLAG_SHSEM|FLAG_TIMEOUT))
             log_errr(
                 "lock timeout code %d did not match expected %d",
                 err_atomicles,

@@ -17,7 +17,6 @@ rendezvous: ../bin/rendezvous
 	gcc ${CC_OPTS} -DSEMKEYPATH='"$(shell realpath $(@F).c)"' -c -Wall Semaphore.c -o Semaphore.o
 	gcc ${CC_OPTS} -lm -Wall $< SharedMemory.o Semaphore.o -o $@
 
-
 #../bin/ia32emu: ia32emu.c registers.o bits.o SharedMemory.o Semaphore.o
 #	gcc ${CC_OPTS} -lm -g -Wall $^ -o $@
 #registers.o: registers.c registers.h

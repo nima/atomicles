@@ -78,15 +78,12 @@ Semaphore* Semaphore$new(key_t key, short size, short initial, bool attach) {
         if(errno == EEXIST) { //. Reattach...
             this->id = semget(k, NOP, 0666|IPC_EXCL);
             if(this->id != -1) success = EXIT_SUCCESS;
-            else perror("sem:new:semget@reattach");
-        } else perror("sem:new:semget@create");
+            else log_errr("semget@reattach");
+        } else log_errr("semget@create");
     } else {
         err_atomicles |= FLAG_SHSEM|FLAG_EXISTS;
-        //perror("[ERROR:semget()]");
+        log_errr("semget@new");
     }
-    /* FIXME - This happens when 2 terminals are started concurrently sometimes...
-       Waiting on lock...sem:new:semget@exists: File exists
-    */
 
     if(success != EXIT_SUCCESS)
         Semaphore$delete(&this, false);
@@ -106,7 +103,7 @@ void Semaphore$delete(Semaphore **this, bool remove_sem_too) {
     */
     if(remove_sem_too)
         if(semctl((*this)->id, NOP, IPC_RMID))
-            perror("semctl:delete");
+            log_errr("semctl@delete");
 
     free(*this);
     *this = NULL;
@@ -118,7 +115,7 @@ int Semaphore_exists(key_t key) {
 
     int exists = (id != -1);
     if(!exists)
-        perror("semget:exists");
+        log_errr("semget@exists");
 
     return exists;
 }
@@ -142,8 +139,8 @@ Semaphore *Semaphore$attach(key_t key) {
         this->key = key;
         this->size = Semaphore$size(this);
     } else {
-        //perror("sem:attach:semget");
         err_atomicles |= FLAG_SHSEM|FLAG_MISSING;
+        log_errr("semget@attach");
     }
 
     return this;
@@ -215,7 +212,7 @@ int Semaphore$init(Semaphore *this, short initial) {
         sarray[i] = initial;
 
     if(semctl(this->id, NOP, SETALL, sarray))
-        perror("semctl:new");
+        log_errr("semctl@init");
     else success = EXIT_SUCCESS;
 
     return success;
@@ -254,7 +251,7 @@ int Semaphore$lock(Semaphore *this, unsigned short index, bool persist, time_t t
         if(semop(this->id, &op, (size_t)1)) {
             if(errno != EIDRM) {
                 //. EIDRM: The semaphore set is removed from the system.
-                perror("semop:lock");
+                log_errr("semop@lock");
                 err_atomicles |= FLAG_SHSEM|FLAG_UNKNOWN;
             }
         }
@@ -267,7 +264,7 @@ int Semaphore$lock(Semaphore *this, unsigned short index, bool persist, time_t t
                 err_atomicles |= FLAG_SHSEM|FLAG_UNAVAIL;
             } else if(errno != EIDRM) {
                 //. EIDRM: The semaphore set is removed from the system.
-                perror("semop:lock");
+                log_errr("semop@lock");
                 err_atomicles |= FLAG_SHSEM|FLAG_UNKNOWN;
             }
         }
@@ -285,7 +282,7 @@ int Semaphore$lock(Semaphore *this, unsigned short index, bool persist, time_t t
                 dbg_warn("timed out");
             } else if(errno != EIDRM) {
                 //. EIDRM: The semaphore set is removed from the system.
-                log_warn("semtimedop:lock");
+                log_warn("semtimedop@lock");
                 err_atomicles |= FLAG_SHSEM|FLAG_UNKNOWN;
             }
         }
@@ -300,8 +297,8 @@ int Semaphore$lock(Semaphore *this, unsigned short index, bool persist, time_t t
                     continue;
                 } else if(errno != EIDRM) {
                     //. EIDRM: The semaphore set is removed from the system.
-                    perror("semop:lock");
                     err_atomicles |= FLAG_SHSEM|FLAG_UNKNOWN;
+                    log_errr("semop@lock");
                     break;
                 }
             } else {
@@ -341,7 +338,7 @@ int Semaphore$unlock(Semaphore *this, unsigned short index, bool persist) {
     op.sem_op = +1;
     op.sem_flg = persist?0:SEM_UNDO;
     if(semop(this->id, &op, (size_t)1))
-        perror("semop:unlock");
+        log_errr("semop@unlock");
     else
         e = 0;
 
