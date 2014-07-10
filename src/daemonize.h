@@ -36,10 +36,10 @@ void daemonize(SharedMemory* shmem, int argc, char* argv[], char *envp[]);
 int usage(const char *cmd, int e);
 void daemonstr(char *buffer, key_t key, pid_t pid, pid_t cpid, unsigned int count);
 
-#define OFFSET_ACTIVE 0
-#define OFFSET_PID    1
-#define OFFSET_CPID   2
-#define OFFSET_COUNT  3
+#define OFFSET_ACTIVE 0u
+#define OFFSET_PID    1u
+#define OFFSET_CPID   2u
+#define OFFSET_COUNT  3u
 #define SHMEM_SIZE (4*sizeof(unsigned int)) //. bytes to store the above values
 
 static void activate(SharedMemory *shmem) {
