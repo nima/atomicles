@@ -279,14 +279,22 @@ int unit() {
             log_errr("recreate didn't fail");
     }
 
-    log_info("Test lock timeout"); {
-        if(lock(key, 3) != (FLAG_SHSEM|FLAG_TIMEOUT))
+    log_info("Test unlock"); {
+        if(unlock(key) != 0)
             log_errr(
-                "lock timeout code %d did not match expected %d",
-                err_atomicles,
-                FLAG_SHSEM|FLAG_TIMEOUT
+                "unlock failed with code %d",
+                err_atomicles
             );
     }
+
+    log_info("Test lock"); {
+        if(lock(key, LOCK_BLOCKING) != 0)
+            log_errr(
+                "lock failed with code %d",
+                err_atomicles
+            );
+    }
+
 
     log_info("Test lock non-block/unavail"); {
         if(lock(key, LOCK_NONBLOCK) != (FLAG_SHSEM|FLAG_UNAVAIL))
@@ -294,6 +302,15 @@ int unit() {
                 "lock nonblock code %d did not match expected %d",
                 err_atomicles,
                 FLAG_SHSEM|FLAG_UNAVAIL
+            );
+    }
+
+    log_info("Test lock timeout"); {
+        if(lock(key, 3) != (FLAG_SHSEM|FLAG_TIMEOUT))
+            log_errr(
+                "lock timeout code %d did not match expected %d",
+                err_atomicles,
+                FLAG_SHSEM|FLAG_TIMEOUT
             );
     }
 
