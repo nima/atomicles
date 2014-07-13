@@ -1,5 +1,5 @@
 BIN     := lock daemonize #syschk ia32emu
-EX      := rendezvous barrier
+EX      := mutex rendezvous barrier
 
 CC_OPTS := -DARCH_$(shell uname -m) -pthread -lm -DDEBUG=4
 
@@ -9,8 +9,9 @@ all: $(BIN) $(EX)
 lock: ../bin/lock
 daemonize: ../bin/daemonize
 
-barrier: ../bin/barrier
+mutex: ../bin/mutex
 rendezvous: ../bin/rendezvous
+barrier: ../bin/barrier
 
 ../bin/%: %.c %.h SharedMemory.c SharedMemory.h Semaphore.c Semaphore.h
 	gcc ${CC_OPTS} -DSHMKEYPATH='"$(shell realpath $(@F).h)"' -c -Wall SharedMemory.c -o SharedMemory.o
