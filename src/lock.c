@@ -239,7 +239,10 @@ int lock(unsigned int key, int timeout) {
             } else Semaphore$lock(shsem, SHSEM_INDEX, 1, timeout);
             Semaphore$delete(&shsem, false);
         } else log_warn("Semaphores %d does exist, but could not be attached to", key);
-    } else log_warn("Semaphores %d does not exist", key);
+    } else {
+        err_atomicles |= FLAG_SHSEM|FLAG_MISSING;
+        log_errr("Semaphores %d does not exist", key);
+    }
 
     return err_atomicles;
 }
@@ -252,7 +255,10 @@ int unlock(unsigned int key) {
         init(shsem);
         Semaphore$unlock(shsem, SHSEM_INDEX, 1);
         Semaphore$delete(&shsem, false);
-    } else log_warn("Semaphores %d does not exist", key);
+    } else {
+        err_atomicles |= FLAG_SHSEM|FLAG_MISSING;
+        log_errr("Semaphores %d does not exist", key);
+    }
 
     return err_atomicles;
 }
@@ -321,6 +327,22 @@ int unit() {
     log_info("Test redelete"); {
         if(delete(key) != (FLAG_SHSEM|FLAG_MISSING))
             log_errr("redelete didn't fail");
+    }
+
+    log_info("Test lock pre-creation"); {
+        if(lock(key, LOCK_BLOCKING) != (FLAG_SHSEM|FLAG_MISSING))
+            log_errr(
+                "lock failed with code %d",
+                err_atomicles
+            );
+    }
+
+    log_info("Test unlock"); {
+        if(unlock(key) != (FLAG_SHSEM|FLAG_MISSING))
+            log_errr(
+                "unlock failed with code %d",
+                err_atomicles
+            );
     }
 
     return 0;
