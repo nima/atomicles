@@ -21,7 +21,9 @@ void *barrier(unsigned int *index) {
     int i;
     pthread_t self = pthread_self();
 
-    for(i=0; i<3; i++) {
+    //. Loop a few times to make sure it works with loops
+    int loop = 3;
+    for(i=0; i<loop; i++) {
         Semaphore$lock(mutex, 0, 1, 0); {
             count++;
             STMT_A;
@@ -56,18 +58,24 @@ int main() {
     unsigned int i;
 
     //. Set-up
+    // size of semaphore-set, we use single-item sets
     unsigned short size  = 1;
     bool attach = true;
 
-    if((door0 = Semaphore$new(sem_key+2, size, 0, attach)) == NULL) {
+    short initial;
+
+    initial = 0;
+    if((door0 = Semaphore$new(sem_key+2, size, initial, attach)) == NULL) {
         printf("! Failed to create mutex\n");
     }
 
-    if((door1 = Semaphore$new(sem_key+1, size, 1, attach)) == NULL) {
+    initial = 1;
+    if((door1 = Semaphore$new(sem_key+1, size, initial, attach)) == NULL) {
         printf("! Failed to create mutex\n");
     }
 
-    if((mutex = Semaphore$new(sem_key, size, 1, attach)) == NULL) {
+    initial = 1;
+    if((mutex = Semaphore$new(sem_key, size, initial, attach)) == NULL) {
         printf("! Failed to create semaphore\n");
     }
 
