@@ -21,7 +21,7 @@ def getoutput(cmd, STDERR=False):
 
 success = 0
 try:
-    from configparser import ConfigParser
+    from metaconfig import ConfigParser
     success = 1
 except ImportError as e:
     stderr.write("Sorry, %s\n" % e)
