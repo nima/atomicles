@@ -8,11 +8,11 @@ lock: lock.c SharedMemory.o Semaphore.o
 	gcc ${CC_OPTS} -Wall $^ -o $@
 
 daemonize: daemonize.c daemonize.h SharedMemory.o Semaphore.o
-	gcc ${CC_OPTS} -lm -Wall $^ -o $@
+	gcc ${CC_OPTS} -Wall $^ -o $@ -lm
 
 
 ia32emu: ia32emu.c registers.o bits.o SharedMemory.o Semaphore.o
-	gcc ${CC_OPTS} -lm -g -Wall $^ -o $@
+	gcc ${CC_OPTS} -g -Wall $^ -o $@ -lm
 registers.o: registers.c registers.h
 	gcc ${CC_OPTS} -c -Wall $< -o $@
 bits.o: bits.c bits.h
